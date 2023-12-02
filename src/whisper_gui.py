@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
 from PyQt6.QtCore import pyqtSlot, QThread, pyqtSignal
 import sounddevice as sd
 from faster_whisper import WhisperModel
+import multiprocessing
 
 
 class TranscriptionThread(QThread):
@@ -107,7 +108,7 @@ class AudioRecorder(QMainWindow):
         self.audio_buffer.extend(indata.copy())
 
     def process_recording(self):
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=True, suffix='.wav') as temp_file:
             with wave.open(temp_file.name, 'wb') as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
@@ -136,4 +137,5 @@ def main():
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()

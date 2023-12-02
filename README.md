@@ -1,8 +1,8 @@
 # Whisper Test Python UI
 
-## Installation
+## Dev Installation
 
-- tested with Python version `3.9.18`
+- built with Python version `3.9.18`
 - `pip install -r requirements.txt`
 - run with `python whisper_gui.py`
 
@@ -12,6 +12,10 @@
 - can modify `model_size` parameter in code to use all Whisper model sizes for free (MacWhisper limits to small, tiny, or base models)
 
 ![](assets/v1_ui.png)
+
+## Known issues
+
+- [ ] pyinstaller executable currently closes on transcription processing
 
 ## Future features:
 
