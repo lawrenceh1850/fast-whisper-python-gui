@@ -3,6 +3,7 @@ import threading
 import tempfile
 import numpy as np
 import wave
+import os
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QTextEdit
 from PyQt6.QtCore import pyqtSlot, QThread, pyqtSignal
 import sounddevice as sd
@@ -33,11 +34,11 @@ class AudioRecorder(QMainWindow):
         super().__init__()
 
         self.is_recording = False
+        self.is_transcribing = False
         self.audio_buffer = []
         self.sample_rate = 16000
 
         self.model_size = "large-v3"
-        self.model = WhisperModel(self.model_size, compute_type="int8")
 
         self.initUI()
 
@@ -57,7 +58,6 @@ class AudioRecorder(QMainWindow):
         self.transcript_text = QTextEdit(self)
         self.transcript_text.setReadOnly(True)
         layout.addWidget(self.transcript_text)
-        self.reset_placeholder_text()
 
         # Set layout
         central_widget = QWidget()
@@ -73,6 +73,16 @@ class AudioRecorder(QMainWindow):
         self.clear_button = QPushButton('Reset Transcript Area', self)
         self.clear_button.clicked.connect(self.clear_text)
         layout.addWidget(self.clear_button)
+
+        # display a loading message while the model is loading
+        self.transcript_text.setPlaceholderText(
+            f"Loading model {self.model_size}...")
+
+        self.init_model()
+
+    def init_model(self):
+        self.model = WhisperModel(self.model_size, compute_type="int8")
+        self.reset_placeholder_text()
 
     def copy_to_clipboard(self):
         clipboard = QApplication.clipboard()
@@ -108,7 +118,7 @@ class AudioRecorder(QMainWindow):
         self.audio_buffer.extend(indata.copy())
 
     def process_recording(self):
-        with tempfile.NamedTemporaryFile(delete=True, suffix='.wav') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
             with wave.open(temp_file.name, 'wb') as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
@@ -123,6 +133,7 @@ class AudioRecorder(QMainWindow):
             self.transcription_thread.transcription_done.connect(
                 self.append_transcription)
             self.transcription_thread.start()
+            self.transcription_thread.finished.connect(lambda: os.remove(temp_file.name))
 
     @pyqtSlot(str)
     def append_transcription(self, transcript):
