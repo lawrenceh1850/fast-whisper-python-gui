@@ -4,9 +4,24 @@ import tempfile
 import numpy as np
 import wave
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QTextEdit
-from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import pyqtSlot, QThread, pyqtSignal
 import sounddevice as sd
 from faster_whisper import WhisperModel
+
+class TranscriptionThread(QThread):
+    transcription_done = pyqtSignal(str)
+
+    def __init__(self, audio_file, model):
+        super().__init__()
+        self.audio_file = audio_file
+        self.model = model
+
+    def run(self):
+        # Transcribe the recording
+        segments, info = self.model.transcribe(self.audio_file)
+        # Concatenate the text from each segment to form the full transcript
+        full_transcript = '\n'.join([segment.text.strip() for segment in segments])
+        self.transcription_done.emit(full_transcript)  # Emit the signal with the transcript
 
 class AudioRecorder(QMainWindow):
     def __init__(self):
@@ -67,7 +82,6 @@ class AudioRecorder(QMainWindow):
             self.record_button.setText('Start Recording')
             self.thread.join()
             self.process_recording()
-            # You would also handle transcription here
         else:
             self.is_recording = True
             self.record_button.setText('Stop Recording')
@@ -92,20 +106,12 @@ class AudioRecorder(QMainWindow):
                 wf.writeframes(np.int16(np.concatenate(self.audio_buffer) * 32767))
             print(f"Recording saved to {temp_file.name}")
 
-            # Transcribe the recording
-            full_transcript = self.transcribe_recording(temp_file.name)
-            # Append the transcript to the text area
-            self.append_transcription(full_transcript)
+            # Start the transcription in a separate thread
+            self.transcription_thread = TranscriptionThread(temp_file.name, self.model)
+            self.transcription_thread.transcription_done.connect(self.append_transcription)
+            self.transcription_thread.start()
 
-
-    def transcribe_recording(self, audio_file):
-        # The transcription now returns a tuple (segments, info)
-        segments, info = self.model.transcribe(audio_file)
-        # Concatenate the text from each segment to form the full transcript
-        full_transcript = '\n'.join([segment.text.strip() for segment in segments])
-        print("Full transcript: ", full_transcript)
-        return full_transcript
-
+    @pyqtSlot(str)
     def append_transcription(self, transcript):
         self.transcript_text.append(transcript)
 
