@@ -15,7 +15,7 @@
 
 ## Known issues
 
-- [ ] pyinstaller executable currently closes on transcription processing
+- [ ] pyinstaller executable still buggy
 
 ## Future features:
 
